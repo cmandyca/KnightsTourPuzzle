@@ -124,7 +124,7 @@
                     </label>
                     <label class="flex items-center">
                         <input type="radio" name="gameMode" value="closed" class="mr-2">
-                        <span class="text-gray-700 dark:text-gray-300">Closed Tour (return to start possible)</span>
+                        <span class="text-gray-700 dark:text-gray-300">Closed Tour (return to starting square at the end for even x even boards)</span>
                     </label>
                 </div>
             </div>
@@ -139,6 +139,10 @@
                     <option value="9">9×9</option>
                     <option value="10">10×10</option>
                 </select>
+            </div>
+            
+            <div id="validationError" class="mb-4 p-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hidden">
+                Closed tours are only possible on even-sized boards (6x6, 8x8, 10x10, etc.)
             </div>
             
             <button id="startGameBtn" class="w-full py-3 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors font-medium">
@@ -216,6 +220,12 @@
                 document.getElementById('undoBtn').addEventListener('click', () => this.undoMove());
                 document.getElementById('newGameBtn').addEventListener('click', () => this.showSetup());
                 document.getElementById('playAgainBtn').addEventListener('click', () => this.showSetup());
+                
+                // Add validation listeners
+                document.querySelectorAll('input[name="gameMode"]').forEach(radio => {
+                    radio.addEventListener('change', () => this.validateGameSettings());
+                });
+                document.getElementById('boardSize').addEventListener('change', () => this.validateGameSettings());
             }
             
             initializeAudio() {
@@ -286,6 +296,11 @@
             startGame() {
                 const gameMode = document.querySelector('input[name="gameMode"]:checked').value;
                 const boardSize = parseInt(document.getElementById('boardSize').value);
+                
+                // Validate combination
+                if (!this.isValidGameSettings(gameMode, boardSize)) {
+                    return;
+                }
                 
                 this.gameMode = gameMode;
                 this.boardSize = boardSize;
@@ -560,12 +575,42 @@
             
 
             
+            validateGameSettings() {
+                const gameMode = document.querySelector('input[name="gameMode"]:checked').value;
+                const boardSize = parseInt(document.getElementById('boardSize').value);
+                const isValid = this.isValidGameSettings(gameMode, boardSize);
+                
+                const errorDiv = document.getElementById('validationError');
+                const startBtn = document.getElementById('startGameBtn');
+                
+                if (!isValid) {
+                    errorDiv.classList.remove('hidden');
+                    startBtn.disabled = true;
+                    startBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                    startBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                } else {
+                    errorDiv.classList.add('hidden');
+                    startBtn.disabled = false;
+                    startBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    startBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                }
+            }
+            
+            isValidGameSettings(gameMode, boardSize) {
+                // Closed tours are only possible on even-sized boards
+                if (gameMode === 'closed' && boardSize % 2 !== 0) {
+                    return false;
+                }
+                return true;
+            }
+            
             showSetup() {
                 this.stopTimer();
                 this.isGameActive = false;
                 document.getElementById('setupModal').classList.remove('hidden');
                 document.getElementById('successModal').classList.add('hidden');
                 document.getElementById('timer').textContent = '00:00';
+                this.validateGameSettings();
             }
         }
         
