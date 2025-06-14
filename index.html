@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html laxng="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knight's Tour Puzzle</title>
+    <link rel="icon" type="image/png" href="KnightsTourPuzzle.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .chess-square {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chess-square:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .light-square {
+            background-color: #F0D9B5;
+        }
+        
+        .dark-square {
+            background-color: #B58863;
+        }
+        
+        .visited-square {
+            background-color: #3B82F6 !important;
+        }
+        
+        .current-square {
+            background-color: #10B981 !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+        }
+        
+        .possible-move {
+            background-color: rgba(255, 255, 0, 0.3) !important;
+        }
+        
+        .knight {
+            font-size: 2rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        
+        .move-number {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        .firework {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            animation: firework 1s ease-out forwards;
+        }
+        
+        @keyframes firework {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(20);
+                opacity: 0;
+            }
+        }
+        
+        .modal {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .light-square {
+                background-color: #F0D9B5;
+            }
+            .dark-square {
+                background-color: #B58863;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <!-- Header -->
+    <div class="flex justify-between items-center p-4 bg-white dark:bg-gray-800 shadow-md">
+        <div></div>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Knight's Tour Puzzle</h1>
+        <div class="text-right">
+            <div id="timer" class="text-xl font-mono text-gray-800 dark:text-white">00:00</div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">Time</div>
+        </div>
+    </div>
+
+    <!-- Game Setup Modal -->
+    <div id="setupModal" class="fixed inset-0 modal flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-white text-center">Setup Knight's Tour</h2>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Game Mode:</label>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="radio" name="gameMode" value="open" checked class="mr-2">
+                        <span class="text-gray-700 dark:text-gray-300">Open Tour (visit all squares)</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="gameMode" value="closed" class="mr-2">
+                        <span class="text-gray-700 dark:text-gray-300">Closed Tour (return to start possible)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Board Size:</label>
+                <select id="boardSize" class="w-full p-2 border rounded text-base bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="5">5×5</option>
+                    <option value="6">6×6</option>
+                    <option value="7">7×7</option>
+                    <option value="8" selected>8×8</option>
+                    <option value="9">9×9</option>
+                    <option value="10">10×10</option>
+                </select>
+            </div>
+            
+            <button id="startGameBtn" class="w-full py-3 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors font-medium">
+                Start Game
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Board Container -->
+    <div class="flex flex-col items-center p-4">
+        <div class="mb-4 flex space-x-4">
+            <button id="undoBtn" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                Undo Move
+            </button>
+            <button id="newGameBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                New Game
+            </button>
+        </div>
+        
+        <div class="mb-4 text-center">
+            <div id="gameInfo" class="text-lg font-medium text-gray-800 dark:text-white"></div>
+            <div id="moveCounter" class="text-sm text-gray-600 dark:text-gray-400"></div>
+        </div>
+        
+        <div id="gameBoard" class="grid gap-1 p-4 bg-gray-800 rounded-lg shadow-lg"></div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 modal hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl max-w-md w-full mx-4 text-center">
+            <h2 class="text-3xl font-bold mb-4 text-green-600">🎉 Congratulations! 🎉</h2>
+            <p class="text-lg mb-4 text-gray-800 dark:text-white">You completed the Knight's Tour!</p>
+            <div id="completionTime" class="text-2xl font-mono mb-6 text-blue-600"></div>
+            <button id="playAgainBtn" class="px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors font-medium">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Fireworks Container -->
+    <div id="fireworksContainer" class="fixed inset-0 pointer-events-none z-40"></div>
+
+    <script>
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        class KnightsTour {
+            constructor() {
+                this.boardSize = 8;
+                this.gameMode = 'open';
+                this.board = [];
+                this.moveHistory = [];
+                this.knightPosition = null;
+                this.startPosition = null;
+                this.gameStartTime = null;
+                this.timerInterval = null;
+                this.isGameActive = false;
+                this.audioContext = null;
+                
+                this.initializeAudio();
+                this.initializeEventListeners();
+            }
+            
+            initializeEventListeners() {
+                document.getElementById('startGameBtn').addEventListener('click', () => this.startGame());
+                document.getElementById('undoBtn').addEventListener('click', () => this.undoMove());
+                document.getElementById('newGameBtn').addEventListener('click', () => this.showSetup());
+                document.getElementById('playAgainBtn').addEventListener('click', () => this.showSetup());
+            }
+            
+            initializeAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Web Audio API not supported');
+                }
+            }
+            
+            playMoveSound() {
+                if (!this.audioContext) return;
+                
+                // Resume audio context if suspended
+                if (this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                // Create a pleasant "click" sound for moves
+                oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + 0.1);
+            }
+            
+            playVictorySound() {
+                if (!this.audioContext) return;
+                
+                // Resume audio context if suspended
+                if (this.audioContext.state === 'suspended') {
+                    this.audioContext.resume();
+                }
+                
+                // Play a triumphant melody
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                const timing = [0, 0.2, 0.4, 0.6];
+                
+                notes.forEach((frequency, index) => {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    oscillator.type = 'triangle';
+                    
+                    const startTime = this.audioContext.currentTime + timing[index];
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    gainNode.gain.linearRampToValueAtTime(0.4, startTime + 0.05);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+                    
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + 0.4);
+                });
+            }
+            
+            startGame() {
+                const gameMode = document.querySelector('input[name="gameMode"]:checked').value;
+                const boardSize = parseInt(document.getElementById('boardSize').value);
+                
+                this.gameMode = gameMode;
+                this.boardSize = boardSize;
+                this.setupGame();
+                
+                document.getElementById('setupModal').classList.add('hidden');
+                this.updateGameInfo();
+                this.startTimer();
+            }
+            
+            setupGame() {
+                this.board = Array(this.boardSize).fill().map(() => Array(this.boardSize).fill(0));
+                this.moveHistory = [];
+                this.knightPosition = null;
+                this.startPosition = null;
+                this.isGameActive = true;
+                
+                this.createBoard();
+                this.updateUndoButton();
+            }
+            
+            createBoard() {
+                const gameBoard = document.getElementById('gameBoard');
+                gameBoard.innerHTML = '';
+                
+                // Calculate square size based on viewport
+                const maxBoardSize = Math.min(window.innerWidth - 100, window.innerHeight - 300);
+                const squareSize = Math.floor(maxBoardSize / this.boardSize);
+                
+                gameBoard.style.gridTemplateColumns = `repeat(${this.boardSize}, ${squareSize}px)`;
+                gameBoard.style.gridTemplateRows = `repeat(${this.boardSize}, ${squareSize}px)`;
+                
+                for (let row = 0; row < this.boardSize; row++) {
+                    for (let col = 0; col < this.boardSize; col++) {
+                        const square = document.createElement('div');
+                        square.className = `chess-square ${(row + col) % 2 === 0 ? 'light-square' : 'dark-square'}`;
+                        square.style.width = `${squareSize}px`;
+                        square.style.height = `${squareSize}px`;
+                        square.dataset.row = row;
+                        square.dataset.col = col;
+                        
+                        square.addEventListener('click', () => this.handleSquareClick(row, col));
+                        gameBoard.appendChild(square);
+                    }
+                }
+            }
+            
+            handleSquareClick(row, col) {
+                if (!this.isGameActive) return;
+                
+                if (this.knightPosition === null) {
+                    // First move - place knight
+                    this.placeKnight(row, col);
+                } else {
+                    // Subsequent moves
+                    this.attemptMove(row, col);
+                }
+            }
+            
+            placeKnight(row, col) {
+                this.knightPosition = { row, col };
+                this.startPosition = { row, col };
+                this.board[row][col] = 1;
+                this.moveHistory.push({ row, col });
+                
+                this.playMoveSound();
+                this.updateBoard();
+                this.updateMoveCounter();
+                this.updateUndoButton();
+            }
+            
+            attemptMove(row, col) {
+                if (this.isValidMove(this.knightPosition.row, this.knightPosition.col, row, col)) {
+                    this.makeMove(row, col);
+                } else {
+                    this.showInvalidMoveWarning();
+                }
+            }
+            
+            isValidMove(fromRow, fromCol, toRow, toCol) {
+                // Check if target square is on board
+                if (toRow < 0 || toRow >= this.boardSize || toCol < 0 || toCol >= this.boardSize) {
+                    return false;
+                }
+                
+                // Check if target square is already visited
+                if (this.board[toRow][toCol] !== 0) {
+                    return false;
+                }
+                
+                // Check if it's a valid knight move
+                const rowDiff = Math.abs(fromRow - toRow);
+                const colDiff = Math.abs(fromCol - toCol);
+                
+                return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+            }
+            
+            makeMove(row, col) {
+                this.knightPosition = { row, col };
+                this.board[row][col] = this.moveHistory.length + 1;
+                this.moveHistory.push({ row, col });
+                
+                this.playMoveSound();
+                this.updateBoard();
+                this.updateMoveCounter();
+                this.updateUndoButton();
+                
+                // Check for game completion
+                if (this.checkGameComplete()) {
+                    this.completeGame();
+                }
+            }
+            
+            checkGameComplete() {
+                const totalSquares = this.boardSize * this.boardSize;
+                const visitedSquares = this.moveHistory.length;
+                
+                if (visitedSquares === totalSquares) {
+                    if (this.gameMode === 'open') {
+                        return true;
+                    } else {
+                        // Check if knight can return to start
+                        const { row, col } = this.knightPosition;
+                        const { row: startRow, col: startCol } = this.startPosition;
+                        return this.isValidKnightMove(row, col, startRow, startCol);
+                    }
+                }
+                return false;
+            }
+            
+            isValidKnightMove(fromRow, fromCol, toRow, toCol) {
+                const rowDiff = Math.abs(fromRow - toRow);
+                const colDiff = Math.abs(fromCol - toCol);
+                return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+            }
+            
+            undoMove() {
+                if (this.moveHistory.length <= 1) return;
+                
+                const lastMove = this.moveHistory.pop();
+                this.board[lastMove.row][lastMove.col] = 0;
+                
+                if (this.moveHistory.length > 0) {
+                    const currentMove = this.moveHistory[this.moveHistory.length - 1];
+                    this.knightPosition = { row: currentMove.row, col: currentMove.col };
+                } else {
+                    this.knightPosition = null;
+                }
+                
+                this.updateBoard();
+                this.updateMoveCounter();
+                this.updateUndoButton();
+            }
+            
+            updateBoard() {
+                const squares = document.querySelectorAll('.chess-square');
+                
+                squares.forEach(square => {
+                    const row = parseInt(square.dataset.row);
+                    const col = parseInt(square.dataset.col);
+                    
+                    // Reset classes
+                    square.className = `chess-square ${(row + col) % 2 === 0 ? 'light-square' : 'dark-square'}`;
+                    square.innerHTML = '';
+                    
+                    const moveNumber = this.board[row][col];
+                    
+                    if (moveNumber > 0) {
+                        square.classList.add('visited-square');
+                        
+                        const numberDiv = document.createElement('div');
+                        numberDiv.className = 'move-number';
+                        numberDiv.textContent = moveNumber;
+                        square.appendChild(numberDiv);
+                    }
+                    
+                    if (this.knightPosition && row === this.knightPosition.row && col === this.knightPosition.col) {
+                        square.classList.add('current-square');
+                        square.innerHTML += '<div class="knight">♞</div>';
+                    }
+                });
+            }
+            
+            updateMoveCounter() {
+                const totalSquares = this.boardSize * this.boardSize;
+                const movesPlayed = this.moveHistory.length;
+                document.getElementById('moveCounter').textContent = `Moves: ${movesPlayed}/${totalSquares}`;
+            }
+            
+            updateGameInfo() {
+                const modeText = this.gameMode === 'open' ? 'Open Tour' : 'Closed Tour';
+                document.getElementById('gameInfo').textContent = `${this.boardSize}×${this.boardSize} ${modeText}`;
+            }
+            
+            updateUndoButton() {
+                const undoBtn = document.getElementById('undoBtn');
+                undoBtn.disabled = this.moveHistory.length <= 1;
+            }
+            
+            showInvalidMoveWarning() {
+                // Create a temporary warning message
+                const warning = document.createElement('div');
+                warning.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                warning.textContent = 'Invalid move! Knights move in an L-shape.';
+                document.body.appendChild(warning);
+                
+                setTimeout(() => {
+                    document.body.removeChild(warning);
+                }, 2000);
+            }
+            
+            startTimer() {
+                this.gameStartTime = Date.now();
+                this.timerInterval = setInterval(() => {
+                    if (this.isGameActive) {
+                        const elapsed = Date.now() - this.gameStartTime;
+                        const minutes = Math.floor(elapsed / 60000);
+                        const seconds = Math.floor((elapsed % 60000) / 1000);
+                        document.getElementById('timer').textContent = 
+                            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }, 1000);
+            }
+            
+            stopTimer() {
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+            
+            completeGame() {
+                this.isGameActive = false;
+                this.stopTimer();
+                
+                const elapsed = Date.now() - this.gameStartTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                const timeText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                document.getElementById('completionTime').textContent = `Time: ${timeText}`;
+                
+                this.playVictorySound();
+                this.showFireworks();
+                setTimeout(() => {
+                    document.getElementById('successModal').classList.remove('hidden');
+                }, 1000);
+            }
+            
+            showFireworks() {
+                const container = document.getElementById('fireworksContainer');
+                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+                
+                for (let i = 0; i < 20; i++) {
+                    setTimeout(() => {
+                        const firework = document.createElement('div');
+                        firework.className = 'firework';
+                        firework.style.left = Math.random() * window.innerWidth + 'px';
+                        firework.style.top = Math.random() * window.innerHeight + 'px';
+                        firework.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                        
+                        container.appendChild(firework);
+                        
+                        setTimeout(() => {
+                            if (container.contains(firework)) {
+                                container.removeChild(firework);
+                            }
+                        }, 1000);
+                    }, i * 100);
+                }
+            }
+            
+
+            
+            showSetup() {
+                this.stopTimer();
+                this.isGameActive = false;
+                document.getElementById('setupModal').classList.remove('hidden');
+                document.getElementById('successModal').classList.add('hidden');
+                document.getElementById('timer').textContent = '00:00';
+            }
+        }
+        
+        // Initialize the game
+        const game = new KnightsTour();
+    </script>
+</body>
+</html>
